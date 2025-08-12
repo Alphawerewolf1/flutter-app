@@ -20,7 +20,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         builder: (context, constraints) {
           return Stack(
             children: [
-              // ✅ Bottom-left man image, perfectly aligned to edges
+              // Bottom-left man image, perfectly aligned to edges
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -36,7 +36,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
 
-              // 📄 Main content scrollable and centered
+              // Main content scrollable and centered
               Align(
                 alignment: Alignment.topCenter,
                 child: SingleChildScrollView(
@@ -120,8 +120,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                             const SizedBox(height: 8),
                             TextField(
-                              obscureText:
-                                  true, // This hides the input for password fields
+                              obscureText: true,
                               decoration: InputDecoration(
                                 hintText: 'Enter Your Password',
                                 filled: true,
@@ -138,16 +137,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             const SizedBox(height: 20),
 
-                            /*_buildInputField("Enter your name"),
-                            const SizedBox(height: 15),
-                            _buildInputField("Enter username"),
-                            const SizedBox(height: 15),
-                            _buildInputField("Enter Email"),
-                            const SizedBox(height: 15),
-                            _buildInputField("Enter password", obscure: true),
-                            const SizedBox(height: 15),*/
-
-                            // ✅ Checkbox follows position & is clickable
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -178,7 +167,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               height: 45,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  // Handle sign-up logic
+                                  // Navigate to login screen when Create Account pressed
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const LoginScreen(),
+                                    ),
+                                  );
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.black,
@@ -235,7 +230,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                             ),
 
-                            const Spacer(), // fills remaining height to prevent scroll bug
+                            const Spacer(),
                           ],
                         ),
                       ),
@@ -246,27 +241,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildInputField(String hint, {bool obscure = false}) {
-    return SizedBox(
-      width: 300,
-      height: 45,
-      child: TextField(
-        obscureText: obscure,
-        decoration: InputDecoration(
-          hintText: hint,
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(30),
-            borderSide: BorderSide.none,
-          ),
-        ),
-        style: const TextStyle(fontSize: 14),
       ),
     );
   }
