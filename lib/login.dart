@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:quinez/forgot_password.dart';
-import 'package:quinez/main.dart';
 import 'package:quinez/home_page.dart';
 import 'package:quinez/sign_up.dart';
 
@@ -22,7 +21,7 @@ class LoginScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 80),
+                  SizedBox(height: screenHeight * 0.1),
                   const Text(
                     'Log in to\nNoteCast',
                     style: TextStyle(
@@ -31,9 +30,8 @@ class LoginScreen extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: screenHeight * 0.05),
 
-                  // Username/Email field
                   const Text(
                     'Username or Email',
                     style: TextStyle(
@@ -56,9 +54,8 @@ class LoginScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: screenHeight * 0.025),
 
-                  // Password field and Forgot link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -103,9 +100,8 @@ class LoginScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  SizedBox(height: screenHeight * 0.04),
 
-                  // Login Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -117,7 +113,6 @@ class LoginScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () {
-                        // TODO: Implement login logic
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
@@ -135,9 +130,8 @@ class LoginScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  SizedBox(height: screenHeight * 0.04),
 
-                  // Sign up link
                   Center(
                     child: Column(
                       children: [
@@ -172,22 +166,22 @@ class LoginScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 100),
+                  SizedBox(height: screenHeight * 0.18), // reserve space for image
                 ],
               ),
             ),
           ),
 
-          // VR Image at bottom right
-          Positioned(
-            bottom: screenHeight * 0.01,
-            right: screenWidth * 0.01,
-            child: IgnorePointer(
-              child: Image.asset(
-                'assets/images/vr.png',
-                width: 130,
-                height: 130,
-                fit: BoxFit.contain,
+          // VR Image with scaling for mobile + PC
+          Align(
+            alignment: Alignment.bottomRight,
+            child: FractionallySizedBox(
+              widthFactor: screenWidth > 800 ? 0.25 : 0.35, // smaller on desktop
+              child: IgnorePointer(
+                child: Image.asset(
+                  'assets/images/vr.png',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),
