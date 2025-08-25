@@ -21,6 +21,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _selectedIndex = 0;
+  bool _isWritingNote = false; // NEW FLAG
 
   File? _imageFile;
   Uint8List? _webImageBytes;
@@ -38,6 +39,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   void _onItemTapped(int index) {
     setState(() {
+      _isWritingNote = false; // reset note writing when switching tabs
       if (_selectedIndex == index) {
         _selectedIndex = -1;
       } else {
@@ -89,7 +91,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     // Decide AppBar look depending on selected page
     PreferredSizeWidget? appBar;
-    if (_selectedIndex == 0) {
+    if (_selectedIndex == 0 && !_isWritingNote) {
       // Diary page → Black AppBar + add button
       appBar = AppBar(
         backgroundColor: Colors.black,
@@ -118,10 +120,34 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const NewNotePage()),
-              );
+              setState(() {
+                _isWritingNote = true;
+              });
+            },
+          ),
+        ],
+      );
+    } else if (_selectedIndex == 0 && _isWritingNote) {
+      // New Note page → Back + Check
+      appBar = AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            setState(() {
+              _isWritingNote = false;
+            });
+          },
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check, color: Colors.white),
+            onPressed: () {
+              // TODO: save note logic
+              setState(() {
+                _isWritingNote = false;
+              });
             },
           ),
         ],
@@ -202,7 +228,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ],
         ),
       )
-          : _pages[_selectedIndex],
+          : (_selectedIndex == 0
+          ? (_isWritingNote
+          ? const NewNotePage()
+          : const DiaryPage())
+          : _pages[_selectedIndex]),
       bottomNavigationBar: SizedBox(
         height: barHeight,
         child: BottomNavigationBar(

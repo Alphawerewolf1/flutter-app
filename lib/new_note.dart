@@ -5,17 +5,16 @@ class NewNotePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('New Note'),
-        backgroundColor: Colors.black,
-      ),
-      body: const Center(
+    return Container(
+      color: const Color(0xFF007BFF),
+      padding: const EdgeInsets.all(16),
+      child: const Center(
         child: Text(
-          'New Note Page Placeholder',
-          style: TextStyle(fontSize: 18),
+          'Write your new note here...',
+          style: TextStyle(color: Colors.white, fontSize: 24),
         ),
       ),
     );
   }
 }
+
