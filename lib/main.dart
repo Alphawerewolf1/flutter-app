@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'login.dart';
-import 'sign_up.dart'; // ✅ ADD THIS LINE
+import 'sign_up.dart';
 
 void main() {
   runApp(const NoteCastApp());
@@ -31,135 +31,137 @@ class WelcomeScreen extends StatelessWidget {
         builder: (context, constraints) {
           final screenHeight = constraints.maxHeight;
           final screenWidth = constraints.maxWidth;
+          final baseSize = math.min(screenWidth, screenHeight);
+
+          // 🎮 Controller scaling (slightly smaller, with max size)
+          final controllerWidth =
+          (baseSize * 0.35).clamp(120, 280).toDouble();
+          final controllerHeight = controllerWidth * 0.65;
+
+          // 👨‍💻 Gamer scaling (smaller + capped)
+          final gamerWidth = (baseSize * 0.45).clamp(160, 320).toDouble();
+          final gamerHeight = gamerWidth * 0.65;
+
+          // 📝 Welcome text scaling
+          final titleFontSize = (baseSize * 0.07).clamp(26, 40).toDouble();
 
           return Stack(
             children: [
-              // 👨‍💻 Gamer image
+              // 📝 Welcome text
               Positioned(
-                bottom: -100,
-                left: (screenWidth - 400) / 2,
-                child: IgnorePointer(
+                top: screenHeight * 0.08,
+                left: 30,
+                child: Text(
+                  'Welcome To\nNoteCast',
+                  style: TextStyle(
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              // 🎮 Controller
+              Positioned(
+                top: screenHeight * 0.22,
+                left: (screenWidth - controllerWidth) / 2,
+                child: Transform.rotate(
+                  angle: -10 * math.pi / 180,
                   child: Image.asset(
-                    'assets/images/gamer.png',
-                    width: 400,
-                    height: 250,
+                    'assets/images/controller.png',
+                    width: controllerWidth,
+                    height: controllerHeight,
                     fit: BoxFit.contain,
                   ),
                 ),
               ),
 
-              Align(
-                alignment: Alignment.topCenter,
+              // ✅ Sign Up Button
+              Positioned(
+                top: screenHeight * 0.52,
+                left: screenWidth * 0.18,
+                right: screenWidth * 0.18,
                 child: SizedBox(
-                  height: screenHeight,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SignUpScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Sign up',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ✅ "Login" text
+              Positioned(
+                top: screenHeight * 0.61,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: RichText(
+                    text: TextSpan(
+                      text: 'Already have an account? ',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                       children: [
-                        const SizedBox(height: 30),
-                        const Text(
-                          'Welcome To\nNoteCast',
-                          style: TextStyle(
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 100),
-                        Center(
-                          child: Transform.rotate(
-                            angle: -10 * math.pi / 180,
-                            child: Image.asset(
-                              'assets/images/controller.png',
-                              width: 300,
-                              height: 200,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 60),
-
-                        // ✅ Sign Up Button Navigates to SignUpScreen
-                        Center(
-                          child: SizedBox(
-                            width: 400,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const SignUpScreen(),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.black,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.baseline,
+                          baseline: TextBaseline.alphabetic,
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const LoginScreen(),
                                 ),
-                              ),
-                              child: const Text(
-                                'Sign up',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // ✅ "Login" clickable text
-                        Center(
-                          child: RichText(
-                            text: TextSpan(
-                              text: 'Already have an account? ',
-                              style: const TextStyle(
+                              );
+                            },
+                            child: const Text(
+                              'Login',
+                              style: TextStyle(
+                                color: Colors.black,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                decoration: TextDecoration.underline,
                               ),
-                              children: [
-                                WidgetSpan(
-                                  alignment: PlaceholderAlignment.baseline,
-                                  baseline: TextBaseline.alphabetic,
-                                  child: MouseRegion(
-                                    cursor: SystemMouseCursors.click,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const LoginScreen(),
-                                          ),
-                                        );
-                                      },
-                                      child: const Text(
-                                        'Login',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          decoration: TextDecoration.underline,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
                         ),
-
-                        const Spacer(),
                       ],
                     ),
                   ),
+                ),
+              ),
+
+              // 👨‍💻 Gamer image — bottom
+              Positioned(
+                bottom: 0,
+                left: (screenWidth - gamerWidth) / 2,
+                child: Image.asset(
+                  'assets/images/gamer.png',
+                  width: gamerWidth,
+                  height: gamerHeight,
+                  fit: BoxFit.contain,
                 ),
               ),
             ],
