@@ -45,11 +45,20 @@ class WelcomeScreen extends StatelessWidget {
           // 📝 Welcome text scaling
           final titleFontSize = (baseSize * 0.07).clamp(26, 40).toDouble();
 
+          // 📍 Dynamic vertical positions
+          final textTop = screenHeight * 0.08;
+          final buttonTop = screenHeight * 0.52;
+
+          // 🎮 Controller sits *closer to button* (weighted 60% toward button, 40% toward text)
+          final controllerTop = textTop +
+              (buttonTop - textTop) * 0.6 -
+              controllerHeight / 2;
+
           return Stack(
             children: [
               // 📝 Welcome text
               Positioned(
-                top: screenHeight * 0.08,
+                top: textTop,
                 left: 30,
                 child: Text(
                   'Welcome To\nNoteCast',
@@ -61,9 +70,9 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
 
-              // 🎮 Controller
+              // 🎮 Controller (shifted downward)
               Positioned(
-                top: screenHeight * 0.22,
+                top: controllerTop,
                 left: (screenWidth - controllerWidth) / 2,
                 child: Transform.rotate(
                   angle: -10 * math.pi / 180,
@@ -78,7 +87,7 @@ class WelcomeScreen extends StatelessWidget {
 
               // ✅ Sign Up Button
               Positioned(
-                top: screenHeight * 0.52,
+                top: buttonTop,
                 left: screenWidth * 0.18,
                 right: screenWidth * 0.18,
                 child: SizedBox(

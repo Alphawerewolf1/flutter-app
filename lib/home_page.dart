@@ -21,7 +21,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _selectedIndex = 0;
-  bool _isWritingNote = false; // NEW FLAG
+  bool _isWritingNote = false;
 
   File? _imageFile;
   Uint8List? _webImageBytes;
@@ -39,7 +39,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   void _onItemTapped(int index) {
     setState(() {
-      _isWritingNote = false; // reset note writing when switching tabs
+      _isWritingNote = false;
       if (_selectedIndex == index) {
         _selectedIndex = -1;
       } else {
@@ -89,7 +89,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     const double barHeight = 60;
 
-    // Decide AppBar look depending on selected page
     PreferredSizeWidget? appBar;
     if (_selectedIndex == 0 && !_isWritingNote) {
       // Diary page → Black AppBar + add button
@@ -128,27 +127,49 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ],
       );
     } else if (_selectedIndex == 0 && _isWritingNote) {
-      // New Note page → Back + Check
+      // New Note page → Username left, Back + Check on right
       appBar = AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            setState(() {
-              _isWritingNote = false;
-            });
-          },
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundImage: _buildPfpImageProvider(),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Username',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.check, color: Colors.white),
-            onPressed: () {
-              // TODO: save note logic
-              setState(() {
-                _isWritingNote = false;
-              });
-            },
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  setState(() {
+                    _isWritingNote = false;
+                  });
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.check, color: Colors.white),
+                onPressed: () {
+                  // TODO: save note logic
+                  setState(() {
+                    _isWritingNote = false;
+                  });
+                },
+              ),
+            ],
           ),
         ],
       );
