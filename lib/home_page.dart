@@ -1,16 +1,12 @@
+import 'dart:io';
 import 'dart:typed_data';
-import 'dart:io' show File, Platform;
-
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
-
-import 'package:quinez/diary.dart';
-import 'package:quinez/weather.dart';
-import 'package:quinez/sf.dart';
-import 'package:quinez/logout.dart';
-import 'package:quinez/new_note.dart';
+import 'package:intl/intl.dart';
+import 'diary.dart';
+import 'new_note.dart';
+import 'weather.dart';
+import 'sf.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,115 +15,114 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   bool _isWritingNote = false;
-
+  final double _pfpRadius = 20;
   File? _imageFile;
   Uint8List? _webImageBytes;
 
-  final double _pfpRadius = 40;
+  // Flip history
+  final List<Map<String, String>> _flipHistory = [];
+  int _currentWeek = _getWeekNumber(DateTime.now());
 
-  static const List<Widget> _pages = <Widget>[
-    DiaryPage(),
-    WeatherPage(),
-    SfPage(),
-    LogoutPage(),
+  final List<Widget> _pages = [
+    const DiaryPage(),
+    const WeatherPage(),
+    const SfPage(),
+    const Center(
+        child: Text('Logout Placeholder',
+            style: TextStyle(color: Colors.white)))
   ];
 
-  final ImagePicker _picker = ImagePicker();
+  static int _getWeekNumber(DateTime date) {
+    final firstDayOfYear = DateTime(date.year, 1, 1);
+    final daysPassed = date.difference(firstDayOfYear).inDays;
+    return (daysPassed / 7).floor();
+  }
 
-  void _onItemTapped(int index) {
+  void _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedFile =
+    await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+      });
+    }
+  }
+
+  // Called from SfPage
+  void addFlipResult(String result) {
+    int thisWeek = _getWeekNumber(DateTime.now());
+    if (thisWeek != _currentWeek) {
+      _flipHistory.clear();
+      _currentWeek = thisWeek;
+    }
+
+    String day = DateFormat('EEEE').format(DateTime.now());
     setState(() {
-      _isWritingNote = false;
-      if (_selectedIndex == index) {
-        _selectedIndex = -1;
-      } else {
-        _selectedIndex = index;
-      }
+      _flipHistory.add({"day": day, "result": result});
     });
   }
 
-  Future<void> _pickImage() async {
-    try {
-      if (kIsWeb) {
-        FilePickerResult? result = await FilePicker.platform.pickFiles(
-          type: FileType.image,
-          withData: true,
+  void _showFlipHistory() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Flip History (This Week)"),
+          content: _flipHistory.isEmpty
+              ? const Text("No flips yet this week.")
+              : SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _flipHistory.length,
+              itemBuilder: (context, index) {
+                final entry = _flipHistory[index];
+                return ListTile(
+                  dense: true,
+                  title: Text(
+                    'On ${entry["day"]}, the result of the flip is ${entry["result"]}',
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _flipHistory.clear();
+                });
+                Navigator.pop(context);
+              },
+              child: const Text("Reset"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
         );
-        if (result != null && result.files.single.bytes != null) {
-          setState(() {
-            _webImageBytes = result.files.single.bytes!;
-            _imageFile = null;
-          });
-        }
-      } else if (Platform.isAndroid || Platform.isIOS) {
-        final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-        if (pickedFile != null) {
-          setState(() {
-            _imageFile = File(pickedFile.path);
-            _webImageBytes = null;
-          });
-        }
-      } else {
-        FilePickerResult? result = await FilePicker.platform.pickFiles(
-          type: FileType.image,
-        );
-        if (result != null && result.files.single.path != null) {
-          setState(() {
-            _imageFile = File(result.files.single.path!);
-            _webImageBytes = null;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error picking image: $e');
-    }
+      },
+    );
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    const double barHeight = 60;
-
+    const double barHeight = 70;
     PreferredSizeWidget? appBar;
-    if (_selectedIndex == 0 && !_isWritingNote) {
-      // Diary page → Black AppBar + add button
-      appBar = AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        leadingWidth: _pfpRadius * 2 + 106,
-        leading: Row(
-          children: [
-            const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: _buildPfpImageProvider(),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Username',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
-            onPressed: () {
-              setState(() {
-                _isWritingNote = true;
-              });
-            },
-          ),
-        ],
-      );
-    } else if (_selectedIndex == 0 && _isWritingNote) {
-      // New Note page → Username left, Back + Check on right
+
+    if (_selectedIndex == 0 && _isWritingNote) {
+      // New Note page
       appBar = AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
@@ -150,31 +145,80 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ],
         ),
         actions: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  setState(() {
-                    _isWritingNote = false;
-                  });
-                },
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                _isWritingNote = false;
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.check, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                _isWritingNote = false;
+              });
+            },
+          ),
+        ],
+      );
+    } else if (_selectedIndex == 1) {
+      // Weather page
+      appBar = AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundImage: _buildPfpImageProvider(),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Username',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
-              IconButton(
-                icon: const Icon(Icons.check, color: Colors.white),
-                onPressed: () {
-                  // TODO: save note logic
-                  setState(() {
-                    _isWritingNote = false;
-                  });
-                },
+            ),
+          ],
+        ),
+      );
+    } else if (_selectedIndex == 2) {
+      // SF page with history button
+      appBar = AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundImage: _buildPfpImageProvider(),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Username',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
-            ],
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history, color: Colors.white),
+            onPressed: _showFlipHistory,
           ),
         ],
       );
     } else {
-      // Default → Blue AppBar with username + PFP
+      // Default
       appBar = AppBar(
         backgroundColor: const Color(0xFF007BFF),
         elevation: 0,
@@ -250,9 +294,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       )
           : (_selectedIndex == 0
-          ? (_isWritingNote
-          ? const NewNotePage()
-          : const DiaryPage())
+          ? (_isWritingNote ? const NewNotePage() : const DiaryPage())
           : _pages[_selectedIndex]),
       bottomNavigationBar: SizedBox(
         height: barHeight,
@@ -289,10 +331,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   BottomNavigationBarItem _buildNavItem(
-      String label,
-      String iconPath,
-      int index,
-      ) {
+      String label, String iconPath, int index) {
     final bool isSelected = _selectedIndex == index;
     final double scale = isSelected ? 1.2 : 1.0;
 
