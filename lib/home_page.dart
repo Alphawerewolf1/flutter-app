@@ -7,6 +7,7 @@ import 'diary.dart';
 import 'new_note.dart';
 import 'weather.dart';
 import 'sf.dart';
+import 'logout.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -30,9 +31,7 @@ class _HomePageState extends State<HomePage> {
     const DiaryPage(),
     const WeatherPage(),
     const SfPage(),
-    const Center(
-        child: Text('Logout Placeholder',
-            style: TextStyle(color: Colors.white)))
+    const LogoutPage(),
   ];
 
   static int _getWeekNumber(DateTime date) {
@@ -52,7 +51,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Called from SfPage
   void addFlipResult(String result) {
     int thisWeek = _getWeekNumber(DateTime.now());
     if (thisWeek != _currentWeek) {
@@ -84,8 +82,7 @@ class _HomePageState extends State<HomePage> {
                 return ListTile(
                   dense: true,
                   title: Text(
-                    'On ${entry["day"]}, the result of the flip is ${entry["result"]}',
-                  ),
+                      'On ${entry["day"]}, the result of the flip is ${entry["result"]}'),
                 );
               },
             ),
@@ -121,27 +118,21 @@ class _HomePageState extends State<HomePage> {
     const double barHeight = 70;
     PreferredSizeWidget? appBar;
 
+    // AppBar logic
     if (_selectedIndex == 0 && _isWritingNote) {
-      // New Note page
       appBar = AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundImage: _buildPfpImageProvider(),
-            ),
+            CircleAvatar(radius: 16, backgroundImage: _buildPfpImageProvider()),
             const SizedBox(width: 8),
-            const Text(
-              'Username',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            const Text('Username',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600)),
           ],
         ),
         actions: [
@@ -163,27 +154,21 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       );
-    } else if (_selectedIndex == 1) {
-      // Weather page
+    } else if (_selectedIndex == 1 || _selectedIndex == 3) {
+      // Weather or Logout: black AppBar
       appBar = AppBar(
         backgroundColor: Colors.black,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: _buildPfpImageProvider(),
-            ),
+            CircleAvatar(radius: 20, backgroundImage: _buildPfpImageProvider()),
             const SizedBox(width: 8),
-            const Text(
-              'Username',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            const Text('Username',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600)),
           ],
         ),
       );
@@ -195,19 +180,13 @@ class _HomePageState extends State<HomePage> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: _buildPfpImageProvider(),
-            ),
+            CircleAvatar(radius: 20, backgroundImage: _buildPfpImageProvider()),
             const SizedBox(width: 8),
-            const Text(
-              'Username',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            const Text('Username',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600)),
           ],
         ),
         actions: [
@@ -218,7 +197,7 @@ class _HomePageState extends State<HomePage> {
         ],
       );
     } else {
-      // Default
+      // Default AppBar
       appBar = AppBar(
         backgroundColor: const Color(0xFF007BFF),
         elevation: 0,
@@ -234,21 +213,17 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: _pfpRadius,
-                    backgroundColor: Colors.white24,
-                    backgroundImage: _buildPfpImageProvider(),
-                  ),
+                      radius: _pfpRadius,
+                      backgroundColor: Colors.white24,
+                      backgroundImage: _buildPfpImageProvider()),
                   const SizedBox(width: 4),
                   const Flexible(
-                    child: Text(
-                      'Username',
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: Text('Username',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -266,30 +241,21 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: const [
-            Text(
-              'Welcome',
-              style: TextStyle(
-                fontSize: 72,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            Text(
-              'to my',
-              style: TextStyle(
-                fontSize: 56,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            Text(
-              'NoteCast',
-              style: TextStyle(
-                fontSize: 72,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+            Text('Welcome',
+                style: TextStyle(
+                    fontSize: 72,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
+            Text('to my',
+                style: TextStyle(
+                    fontSize: 56,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
+            Text('NoteCast',
+                style: TextStyle(
+                    fontSize: 72,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
           ],
         ),
       )

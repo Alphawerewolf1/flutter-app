@@ -1,10 +1,52 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:firebase_core/firebase_core.dart';
 import 'login.dart';
 import 'sign_up.dart';
 
 void main() {
-  runApp(const NoteCastApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const AppInitializer());
+}
+
+// Wrapper that handles Firebase initialization
+class AppInitializer extends StatelessWidget {
+  const AppInitializer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder(
+      future: Firebase.initializeApp(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          // Firebase initialized successfully
+          return const NoteCastApp();
+        }
+        if (snapshot.hasError) {
+          // Show error if initialization fails
+          return MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: Text(
+                  'Firebase initialization error:\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
+          );
+        }
+        // Show loading spinner while initializing
+        return const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class NoteCastApp extends StatelessWidget {
@@ -33,30 +75,21 @@ class WelcomeScreen extends StatelessWidget {
           final screenWidth = constraints.maxWidth;
           final baseSize = math.min(screenWidth, screenHeight);
 
-          // 🎮 Controller scaling (slightly smaller, with max size)
           final controllerWidth =
           (baseSize * 0.35).clamp(120, 280).toDouble();
           final controllerHeight = controllerWidth * 0.65;
 
-          // 👨‍💻 Gamer scaling (smaller + capped)
           final gamerWidth = (baseSize * 0.45).clamp(160, 320).toDouble();
           final gamerHeight = gamerWidth * 0.65;
 
-          // 📝 Welcome text scaling
           final titleFontSize = (baseSize * 0.07).clamp(26, 40).toDouble();
 
-          // 📍 Dynamic vertical positions
           final textTop = screenHeight * 0.08;
           final buttonTop = screenHeight * 0.52;
-
-          // 🎮 Controller sits *closer to button* (weighted 60% toward button, 40% toward text)
-          final controllerTop = textTop +
-              (buttonTop - textTop) * 0.6 -
-              controllerHeight / 2;
+          final controllerTop = textTop + (buttonTop - textTop) * 0.6 - controllerHeight / 2;
 
           return Stack(
             children: [
-              // 📝 Welcome text
               Positioned(
                 top: textTop,
                 left: 30,
@@ -69,8 +102,6 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // 🎮 Controller (shifted downward)
               Positioned(
                 top: controllerTop,
                 left: (screenWidth - controllerWidth) / 2,
@@ -84,8 +115,6 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // ✅ Sign Up Button
               Positioned(
                 top: buttonTop,
                 left: screenWidth * 0.18,
@@ -117,8 +146,6 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // ✅ "Login" text
               Positioned(
                 top: screenHeight * 0.61,
                 left: 0,
@@ -161,8 +188,6 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // 👨‍💻 Gamer image — bottom
               Positioned(
                 bottom: 0,
                 left: (screenWidth - gamerWidth) / 2,
