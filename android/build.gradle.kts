@@ -1,3 +1,12 @@
+plugins {
+    // Make sure to include your Android and Kotlin plugins here if needed, e.g.:
+    // id("com.android.application") version "8.5.2" apply false
+    // id("org.jetbrains.kotlin.android") version "1.9.23" apply false
+
+    // ✅ Google Services plugin for Firebase
+    id("com.google.gms.google-services") version "4.4.3" apply false
+}
+
 allprojects {
     repositories {
         google()
@@ -11,8 +20,6 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
-}
-subprojects {
     project.evaluationDependsOn(":app")
 }
 

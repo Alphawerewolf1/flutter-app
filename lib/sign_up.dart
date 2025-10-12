@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'login.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -12,6 +13,82 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   bool isChecked = false;
 
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool isLoading = false;
+
+  // 🔹 Register user into Firestore with auto-increment ID
+  void registerUser() async {
+    if (!isChecked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You must agree to the Terms and Privacy policy"),
+        ),
+      );
+      return;
+    }
+
+    if (nameController.text.isEmpty ||
+        usernameController.text.isEmpty ||
+        emailController.text.isEmpty ||
+        passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("All fields are required")),
+      );
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // 🔹 Get latest ID
+      QuerySnapshot snapshot = await _firestore
+          .collection('users')
+          .orderBy('id', descending: true)
+          .limit(1)
+          .get();
+
+      int nextId = 1;
+      if (snapshot.docs.isNotEmpty) {
+        nextId = (snapshot.docs.first['id'] as int) + 1;
+      }
+
+      // 🔹 Add user to Firestore
+      await _firestore.collection('users').add({
+        'id': nextId,
+        'name': nameController.text.trim(),
+        'username': usernameController.text.trim(),
+        'email': emailController.text.trim(),
+        'password': passwordController.text.trim(), // ⚠️ Not secure in plaintext
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Account created successfully!")),
+      );
+
+      // Go to login screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Registration failed: ${e.toString()}")),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -20,7 +97,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         builder: (context, constraints) {
           return Stack(
             children: [
-              // Bottom-left man image, perfectly aligned to edges
+              // 🔹 Bottom-left man image
               Positioned(
                 bottom: 0,
                 left: 0,
@@ -36,14 +113,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
 
-              // Main content scrollable and centered
+              // 🔹 Main content
               Align(
                 alignment: Alignment.topCenter,
                 child: SingleChildScrollView(
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
                     child: IntrinsicHeight(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -63,8 +138,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             const SizedBox(height: 35),
 
-                            const SizedBox(height: 8),
+                            // 🔹 Name
                             TextField(
+                              controller: nameController,
                               decoration: InputDecoration(
                                 hintText: 'Enter Your Name',
                                 filled: true,
@@ -81,8 +157,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             const SizedBox(height: 20),
 
-                            const SizedBox(height: 8),
+                            // 🔹 Username
                             TextField(
+                              controller: usernameController,
                               decoration: InputDecoration(
                                 hintText: 'Enter Your Username',
                                 filled: true,
@@ -99,11 +176,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             const SizedBox(height: 20),
 
-                            const SizedBox(height: 8),
+                            // 🔹 Email
                             TextField(
+                              controller: emailController,
                               decoration: InputDecoration(
-                                hintText:
-                                    'Enter Your Email (example: example@gmail.com)',
+                                hintText: 'Enter Your Email',
                                 filled: true,
                                 fillColor: Colors.white,
                                 contentPadding: const EdgeInsets.symmetric(
@@ -118,8 +195,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             const SizedBox(height: 20),
 
-                            const SizedBox(height: 8),
+                            // 🔹 Password
                             TextField(
+                              controller: passwordController,
                               obscureText: true,
                               decoration: InputDecoration(
                                 hintText: 'Enter Your Password',
@@ -137,6 +215,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             const SizedBox(height: 20),
 
+                            // 🔹 Terms Checkbox
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -162,26 +241,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             const SizedBox(height: 10),
 
+                            // 🔹 Create Account Button
                             SizedBox(
                               width: 180,
                               height: 45,
                               child: ElevatedButton(
-                                onPressed: () {
-                                  // Navigate to login screen when Create Account pressed
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const LoginScreen(),
-                                    ),
-                                  );
-                                },
+                                onPressed: isLoading ? null : registerUser,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.black,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(25),
                                   ),
                                 ),
-                                child: const Text(
+                                child: isLoading
+                                    ? const CircularProgressIndicator(color: Colors.white)
+                                    : const Text(
                                   'Create Account',
                                   style: TextStyle(
                                     color: Colors.white,
@@ -192,6 +266,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             ),
                             const SizedBox(height: 20),
 
+                            // 🔹 Already have account
                             RichText(
                               text: TextSpan(
                                 text: "Already have an account? ",
@@ -209,8 +284,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const LoginScreen(),
+                                              builder: (context) => const LoginScreen(),
                                             ),
                                           );
                                         },
@@ -219,8 +293,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           style: TextStyle(
                                             color: Colors.black,
                                             fontWeight: FontWeight.bold,
-                                            decoration:
-                                                TextDecoration.underline,
+                                            decoration: TextDecoration.underline,
                                           ),
                                         ),
                                       ),
@@ -229,7 +302,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 ],
                               ),
                             ),
-
                             const Spacer(),
                           ],
                         ),

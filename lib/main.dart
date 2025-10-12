@@ -4,49 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'login.dart';
 import 'sign_up.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AppInitializer());
-}
-
-// Wrapper that handles Firebase initialization
-class AppInitializer extends StatelessWidget {
-  const AppInitializer({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: Firebase.initializeApp(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          // Firebase initialized successfully
-          return const NoteCastApp();
-        }
-        if (snapshot.hasError) {
-          // Show error if initialization fails
-          return MaterialApp(
-            home: Scaffold(
-              body: Center(
-                child: Text(
-                  'Firebase initialization error:\n${snapshot.error}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            ),
-          );
-        }
-        // Show loading spinner while initializing
-        return const MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  await Firebase.initializeApp(); // Initialize once
+  runApp(const NoteCastApp());
 }
 
 class NoteCastApp extends StatelessWidget {
@@ -75,8 +36,7 @@ class WelcomeScreen extends StatelessWidget {
           final screenWidth = constraints.maxWidth;
           final baseSize = math.min(screenWidth, screenHeight);
 
-          final controllerWidth =
-          (baseSize * 0.35).clamp(120, 280).toDouble();
+          final controllerWidth = (baseSize * 0.35).clamp(120, 280).toDouble();
           final controllerHeight = controllerWidth * 0.65;
 
           final gamerWidth = (baseSize * 0.45).clamp(160, 320).toDouble();
@@ -86,7 +46,8 @@ class WelcomeScreen extends StatelessWidget {
 
           final textTop = screenHeight * 0.08;
           final buttonTop = screenHeight * 0.52;
-          final controllerTop = textTop + (buttonTop - textTop) * 0.6 - controllerHeight / 2;
+          final controllerTop =
+              textTop + (buttonTop - textTop) * 0.6 - controllerHeight / 2;
 
           return Stack(
             children: [
