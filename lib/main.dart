@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'package:firebase_core/firebase_core.dart';
 import 'login.dart';
 import 'sign_up.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // Initialize once
+void main() {
   runApp(const NoteCastApp());
 }
 
