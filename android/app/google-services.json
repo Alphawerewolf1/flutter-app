@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:856367310343:android:67e38ae8a27d363fa1eca2",
+        "mobilesdk_app_id": "1:856367310343:android:3b3818fd2a8fbb59a1eca2",
         "android_client_info": {
-          "package_name": "com.example.quinez"
+          "package_name": "com.example.myapp"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "856367310343-oi3cvh59f9pbi2k0h1cpqqvei4mi6d85.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC4eMqOixhLSwC9scUWWlBbYNyxXSHm5_c"
@@ -20,7 +25,41 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "856367310343-oi3cvh59f9pbi2k0h1cpqqvei4mi6d85.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:856367310343:android:67e38ae8a27d363fa1eca2",
+        "android_client_info": {
+          "package_name": "com.example.quinez"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "856367310343-oi3cvh59f9pbi2k0h1cpqqvei4mi6d85.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4eMqOixhLSwC9scUWWlBbYNyxXSHm5_c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "856367310343-oi3cvh59f9pbi2k0h1cpqqvei4mi6d85.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
