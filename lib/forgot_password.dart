@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:quinez/new_pass.dart'; // Import your new page
-import 'package:quinez/main.dart';
-import 'package:quinez/sign_up.dart';
+
 
 class ForgotPass extends StatefulWidget {
   const ForgotPass({super.key});

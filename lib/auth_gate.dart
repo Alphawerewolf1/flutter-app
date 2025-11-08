@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:your_app_name/auth_service.dart';
-import 'package:your_app_name/home_page.dart';
-import 'package:your_app_name/login_page.dart';
+import 'package:quinez/auth_service.dart';
+import 'package:quinez/home_page.dart';
+import 'package:quinez/login.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -25,7 +25,7 @@ class AuthGate extends StatelessWidget {
           return const HomePage();
         } else {
           // No user → go to login screen
-          return const LoginPage();
+          return const LoginScreen();
         }
       },
     );

@@ -37,12 +37,12 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       String? emailToUse;
 
-      // 🔍 Step 1: Try to detect if input is email
+      // 🔍 Step 1: Detect if input is an email
       final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
       if (emailRegex.hasMatch(input)) {
-        emailToUse = input; // Input is already an email
+        emailToUse = input.toLowerCase();
       } else {
-        // 🔍 Step 2: Find the user by username from Firestore
+        // 🔍 Step 2: Find user by username in Firestore
         final query = await _firestore
             .collection('users')
             .where('username', isEqualTo: input)
@@ -51,33 +51,60 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (query.docs.isEmpty) {
           throw FirebaseAuthException(
-              code: 'user-not-found', message: 'No account found with this username');
+            code: 'user-not-found',
+            message: 'No account found with this username',
+          );
         }
 
-        emailToUse = query.docs.first['email'];
+        emailToUse = (query.docs.first['email'] as String).toLowerCase();
       }
 
       // 🔐 Step 3: Sign in using Firebase Auth
       await _auth.signInWithEmailAndPassword(
-        email: emailToUse!,
+        email: emailToUse,
         password: password,
       );
 
-      // ✅ Step 4: Navigate to HomePage
+      // ✅ Step 4: Verify Firestore user record exists
+      final userDoc = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: emailToUse)
+          .limit(1)
+          .get();
+
+      if (userDoc.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("User record missing in database")),
+        );
+        await _auth.signOut();
+        setState(() => isLoading = false);
+        return;
+      }
+
+      // ✅ Step 5: Navigate to HomePage
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomePage()),
       );
     } on FirebaseAuthException catch (e) {
-      String message = "Login failed";
-      if (e.code == 'user-not-found') {
-        message = "No account found with this email or username";
-      } else if (e.code == 'wrong-password') {
-        message = "Incorrect password";
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+          message = "No account found for this email or username";
+          break;
+        case 'wrong-password':
+          message = "Incorrect password. Please try again.";
+          break;
+        case 'invalid-email':
+          message = "Invalid email format.";
+          break;
+        default:
+          message = "Login failed. ${e.message}";
       }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Login error: ${e.toString()}")));
     } finally {
       setState(() => isLoading = false);
     }
@@ -204,13 +231,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
                               : const Text(
-                            'Log In',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                                  'Log In',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                       SizedBox(height: screenHeight * 0.04),
@@ -230,7 +257,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onTap: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                                    MaterialPageRoute(
+                                      builder: (context) => const SignUpScreen(),
+                                    ),
                                   );
                                 },
                                 child: const Text(

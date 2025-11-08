@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:table_calendar/table_calendar.dart';
 import 'package:geolocator/geolocator.dart';
+import 'weather_service.dart';
 
 class WeatherPage extends StatefulWidget {
   const WeatherPage({super.key});
@@ -16,44 +17,53 @@ class _WeatherPageState extends State<WeatherPage> {
   DateTime _selectedDay = DateTime.now();
   bool _isLoading = true;
 
-  Map<String, dynamic> _weather = {"status": "Loading...", "temp": "--"};
-
-  final String _apiKey = "e3dcb7020205451fa5c52702250710"; // WeatherAPI key
+  String _status = "Loading...";
+  String _temp = "--";
+  final WeatherService _weatherService = WeatherService();
 
   @override
   void initState() {
     super.initState();
-    _fetchWeather(_selectedDay, showLoading: true);
+    _fetchWeather(showLoading: true);
   }
 
-  Future<Map<String, double>> _getCoordinates() async {
+  Future<String> _getCityFromLocation() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (serviceEnabled) {
-        LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-        }
-        if (permission == LocationPermission.deniedForever ||
-            permission == LocationPermission.denied) {
-          throw Exception("Permission denied");
-        }
+      if (!serviceEnabled) throw Exception("GPS disabled");
 
-        final pos = await Geolocator.getCurrentPosition();
-        return {"lat": pos.latitude, "lon": pos.longitude};
-      } else {
-        throw Exception("GPS disabled");
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
       }
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
+        throw Exception("Permission denied");
+      }
+
+      final pos = await Geolocator.getCurrentPosition();
+
+      // Reverse geocode using OpenWeatherMap API
+      final geoUrl =
+          "https://api.openweathermap.org/geo/1.0/reverse?lat=${pos.latitude}&lon=${pos.longitude}&limit=1&appid=${_weatherService.apiKey}";
+      final geoRes = await http.get(Uri.parse(geoUrl));
+
+      if (geoRes.statusCode == 200) {
+        final data = json.decode(geoRes.body);
+        if (data.isNotEmpty && data[0]["name"] != null) {
+          return data[0]["name"];
+        }
+      }
+
+      throw Exception("Failed to get city");
     } catch (_) {
+      // Fallback via IP geolocation
       final ipRes = await http.get(Uri.parse("http://ip-api.com/json/"));
       if (ipRes.statusCode == 200) {
         final data = json.decode(ipRes.body);
-        return {
-          "lat": (data["lat"] as num).toDouble(),
-          "lon": (data["lon"] as num).toDouble()
-        };
+        return data["city"] ?? "Manila";
       } else {
-        return {"lat": 14.5995, "lon": 120.9842}; // Manila fallback
+        return "Manila";
       }
     }
   }
@@ -69,59 +79,22 @@ class _WeatherPageState extends State<WeatherPage> {
     return "Unknown";
   }
 
-  Future<void> _fetchWeather(DateTime date, {bool showLoading = false}) async {
+  Future<void> _fetchWeather({bool showLoading = false}) async {
     if (showLoading) setState(() => _isLoading = true);
 
     try {
-      final now = DateTime.now();
-      final difference = date.difference(now).inDays;
+      final city = await _getCityFromLocation();
+      final weather = await _weatherService.fetchWeather(city);
 
-      // WeatherAPI free tier: only supports past + up to 14 days forecast
-      if (difference > 14) {
-        setState(() {
-          _weather = {
-            "status": "No Forecast Available",
-            "temp": "--"
-          };
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final coords = await _getCoordinates();
-      final lat = coords["lat"];
-      final lon = coords["lon"];
-
-      final dateString =
-          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-
-      final url =
-          "https://api.weatherapi.com/v1/forecast.json?key=$_apiKey&q=$lat,$lon&dt=$dateString";
-
-      final res = await http.get(Uri.parse(url));
-
-      if (res.statusCode == 200) {
-        final data = json.decode(res.body);
-        final forecast = data["forecast"]["forecastday"][0];
-        final condition = forecast["day"]["condition"]["text"];
-        final avgTemp = forecast["day"]["avgtemp_c"].toString();
-
-        setState(() {
-          _weather = {
-            "status": _simplifyCondition(condition),
-            "temp": "$avgTemp°C"
-          };
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _weather = {"status": "No Data", "temp": "--"};
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
       setState(() {
-        _weather = {"status": "Network Error", "temp": "--"};
+        _status = _simplifyCondition(weather.description);
+        _temp = "${weather.temperature.toStringAsFixed(1)}°C";
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _status = "Error loading weather";
+        _temp = "--";
         _isLoading = false;
       });
     }
@@ -160,7 +133,7 @@ class _WeatherPageState extends State<WeatherPage> {
                   _selectedDay = selectedDay;
                   _focusedDay = focusedDay;
                 });
-                _fetchWeather(selectedDay); // instant update
+                _fetchWeather(); // refreshes weather for same city
               },
               headerVisible: false,
               calendarStyle: CalendarStyle(
@@ -200,7 +173,7 @@ class _WeatherPageState extends State<WeatherPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Forecast:\n${_weather["status"]}",
+                "Forecast:\n$_status",
                 style: const TextStyle(
                   fontSize: 22,
                   color: Colors.white,
@@ -208,7 +181,7 @@ class _WeatherPageState extends State<WeatherPage> {
                 ),
               ),
               Text(
-                _weather["temp"],
+                _temp,
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,

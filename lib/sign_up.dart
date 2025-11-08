@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'login.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -19,10 +20,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   bool isLoading = false;
 
-  // 🔹 Register user into Firestore with auto-increment ID
-  void registerUser() async {
+  // 🔹 Register user into Firebase Authentication and Firestore
+  Future<void> registerUser() async {
     if (!isChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -36,9 +38,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         usernameController.text.isEmpty ||
         emailController.text.isEmpty ||
         passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("All fields are required")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("All fields are required")));
       return;
     }
 
@@ -47,7 +49,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      // 🔹 Get latest ID
+      // 🔹 Create Firebase Authentication user
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+
+      // 🔹 Ensure token sync for Firestore
+      await _auth.currentUser?.reload();
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      // 🔹 Generate incremental ID (based on last document)
       QuerySnapshot snapshot = await _firestore
           .collection('users')
           .orderBy('id', descending: true)
@@ -59,13 +72,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         nextId = (snapshot.docs.first['id'] as int) + 1;
       }
 
-      // 🔹 Add user to Firestore
-      await _firestore.collection('users').add({
+      // 🔹 Save user to Firestore using UID as document ID
+      await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'id': nextId,
         'name': nameController.text.trim(),
         'username': usernameController.text.trim(),
         'email': emailController.text.trim(),
-        'password': passwordController.text.trim(), // ⚠️ Not secure in plaintext
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -73,10 +85,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const SnackBar(content: Text("Account created successfully!")),
       );
 
-      // Go to login screen
+      // 🔹 Go to login screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Authentication failed: ${e.message}")),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -118,7 +134,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 alignment: Alignment.topCenter,
                 child: SingleChildScrollView(
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
                     child: IntrinsicHeight(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -254,14 +272,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   ),
                                 ),
                                 child: isLoading
-                                    ? const CircularProgressIndicator(color: Colors.white)
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
                                     : const Text(
-                                  'Create Account',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
-                                ),
+                                        'Create Account',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -284,7 +304,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (context) => const LoginScreen(),
+                                              builder: (context) =>
+                                                  const LoginScreen(),
                                             ),
                                           );
                                         },
@@ -293,7 +314,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           style: TextStyle(
                                             color: Colors.black,
                                             fontWeight: FontWeight.bold,
-                                            decoration: TextDecoration.underline,
+                                            decoration:
+                                                TextDecoration.underline,
                                           ),
                                         ),
                                       ),
