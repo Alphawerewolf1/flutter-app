@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LogoutPage extends StatelessWidget {
   const LogoutPage({super.key});
@@ -33,8 +34,11 @@ class LogoutPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () {
-                // Return to WelcomeScreen or Login flow
+              onPressed: () async {
+                // Sign out of Firebase
+                await FirebaseAuth.instance.signOut();
+
+                // Navigate to main.dart (root)
                 Navigator.pushNamedAndRemoveUntil(
                     context, '/', (route) => false);
               },

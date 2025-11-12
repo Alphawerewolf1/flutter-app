@@ -3,11 +3,15 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'diary.dart';
 import 'new_note.dart';
 import 'weather.dart';
 import 'sf.dart';
 import 'logout.dart';
+import 'services/firebase_database_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,7 +27,13 @@ class _HomePageState extends State<HomePage> {
   File? _imageFile;
   Uint8List? _webImageBytes;
 
-  // Flip history
+  String _username = "Loading...";
+  String? _editingNoteId;
+  String _noteTitle = "";
+  String _noteContent = "";
+
+  final FirebaseDatabaseService _dbService = FirebaseDatabaseService();
+
   final List<Map<String, String>> _flipHistory = [];
   int _currentWeek = _getWeekNumber(DateTime.now());
 
@@ -34,11 +44,46 @@ class _HomePageState extends State<HomePage> {
     const LogoutPage(),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsername();
+  }
+
   static int _getWeekNumber(DateTime date) {
     final firstDayOfYear = DateTime(date.year, 1, 1);
     final daysPassed = date.difference(firstDayOfYear).inDays;
     return (daysPassed / 7).floor();
   }
+
+  Future<void> _fetchUsername() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data()!;
+        setState(() {
+          _username = data['username'] ?? data['name'] ?? user.email ?? 'User';
+        });
+      } else {
+        setState(() {
+          _username = user.email ?? 'User';
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading username: $e");
+      setState(() {
+        _username = "User";
+      });
+    }
+  }
+
 
   void _pickImage() async {
     final ImagePicker picker = ImagePicker();
@@ -64,53 +109,128 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _showFlipHistory() {
+  void _showFlipHistory() async {
+    // show a loading dialog while fetching
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Flip History (This Week)"),
-          content: _flipHistory.isEmpty
-              ? const Text("No flips yet this week.")
-              : SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _flipHistory.length,
-              itemBuilder: (context, index) {
-                final entry = _flipHistory[index];
-                return ListTile(
-                  dense: true,
-                  title: Text(
-                      'On ${entry["day"]}, the result of the flip is ${entry["result"]}'),
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _flipHistory.clear();
-                });
-                Navigator.pop(context);
-              },
-              child: const Text("Reset"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Close"),
-            ),
-          ],
-        );
+      barrierDismissible: false,
+      builder: (_) {
+        return const Center(child: CircularProgressIndicator());
       },
     );
+
+    try {
+      final flips = await _dbService.getLatestFlips(limit: 5);
+
+      // close the loading dialog
+      Navigator.of(context).pop();
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Flip History (Latest 5)"),
+            content: flips.isEmpty
+                ? const Text("No flips yet.")
+                : SizedBox(
+              width: double.maxFinite,
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: flips.length,
+                separatorBuilder: (_, __) => const Divider(height: 8),
+                itemBuilder: (context, index) {
+                  final f = flips[index];
+                  String result = f['result'] ?? '';
+                  String ts = f['timestamp'] ?? '';
+                  String formatted = ts.isNotEmpty
+                      ? DateFormat('MM/dd/yyyy h:mm a')
+                      .format(DateTime.parse(ts))
+                      : '';
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      "$result — $formatted",
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Close"),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      // close the loading dialog if still open
+      if (Navigator.canPop(context)) Navigator.of(context).pop();
+      debugPrint("Error fetching flip history: $e");
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Error"),
+            content: Text("Failed to load history: $e"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Close"),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      _isWritingNote = false;
     });
+  }
+
+  void _startNewNote() {
+    setState(() {
+      _isWritingNote = true;
+      _noteTitle = "";
+      _noteContent = "";
+      _editingNoteId = null;
+    });
+  }
+
+  void _editExistingNote(String id, String title, String content) {
+    setState(() {
+      _isWritingNote = true;
+      _editingNoteId = id;
+      _noteTitle = title;
+      _noteContent = content;
+    });
+  }
+
+  Future<void> _saveNote() async {
+    if (_noteTitle.trim().isEmpty && _noteContent.trim().isEmpty) return;
+
+    if (_editingNoteId != null) {
+      await _dbService.updateNote(_editingNoteId!, _noteTitle, _noteContent);
+    } else {
+      await _dbService.addNote(_noteTitle, _noteContent);
+    }
+
+    setState(() {
+      _isWritingNote = false;
+      _editingNoteId = null;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Note saved successfully!")),
+      );
+    }
   }
 
   @override
@@ -118,77 +238,65 @@ class _HomePageState extends State<HomePage> {
     const double barHeight = 70;
     PreferredSizeWidget? appBar;
 
-    // AppBar logic
+    Row _buildUserRow(double radius) {
+      return Row(
+        children: [
+          CircleAvatar(radius: radius, backgroundImage: _buildPfpImageProvider()),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              _username,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     if (_selectedIndex == 0 && _isWritingNote) {
       appBar = AppBar(
         backgroundColor: Colors.black,
-        elevation: 0,
+        title: _buildUserRow(16),
         automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            CircleAvatar(radius: 16, backgroundImage: _buildPfpImageProvider()),
-            const SizedBox(width: 8),
-            const Text('Username',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600)),
-          ],
-        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () {
-              setState(() {
-                _isWritingNote = false;
-              });
-            },
+            icon: const Icon(Icons.cancel, color: Colors.white),
+            onPressed: () => setState(() => _isWritingNote = false),
           ),
           IconButton(
             icon: const Icon(Icons.check, color: Colors.white),
-            onPressed: () {
-              setState(() {
-                _isWritingNote = false;
-              });
-            },
+            onPressed: _saveNote,
+          ),
+        ],
+      );
+    } else if (_selectedIndex == 0) {
+      appBar = AppBar(
+        backgroundColor: Colors.black,
+        title: _buildUserRow(20),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add, color: Colors.white),
+            onPressed: _startNewNote,
           ),
         ],
       );
     } else if (_selectedIndex == 1 || _selectedIndex == 3) {
-      // Weather or Logout: black AppBar
       appBar = AppBar(
         backgroundColor: Colors.black,
-        elevation: 0,
+        title: _buildUserRow(20),
         automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            CircleAvatar(radius: 20, backgroundImage: _buildPfpImageProvider()),
-            const SizedBox(width: 8),
-            const Text('Username',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600)),
-          ],
-        ),
       );
     } else if (_selectedIndex == 2) {
-      // SF page with history button
       appBar = AppBar(
         backgroundColor: Colors.black,
-        elevation: 0,
+        title: _buildUserRow(20),
         automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            CircleAvatar(radius: 20, backgroundImage: _buildPfpImageProvider()),
-            const SizedBox(width: 8),
-            const Text('Username',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600)),
-          ],
-        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.history, color: Colors.white),
@@ -196,72 +304,21 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       );
-    } else {
-      // Default AppBar
-      appBar = AppBar(
-        backgroundColor: const Color(0xFF007BFF),
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        leadingWidth: _pfpRadius * 2 + 106,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 4.0, top: 4.0),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(100),
-              onTap: _pickImage,
-              child: Row(
-                children: [
-                  CircleAvatar(
-                      radius: _pfpRadius,
-                      backgroundColor: Colors.white24,
-                      backgroundImage: _buildPfpImageProvider()),
-                  const SizedBox(width: 4),
-                  const Flexible(
-                    child: Text('Username',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
     }
 
     return Scaffold(
       backgroundColor: const Color(0xFF007BFF),
       appBar: appBar,
-      body: _selectedIndex == -1
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Text('Welcome',
-                style: TextStyle(
-                    fontSize: 72,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
-            Text('to my',
-                style: TextStyle(
-                    fontSize: 56,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
-            Text('NoteCast',
-                style: TextStyle(
-                    fontSize: 72,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white)),
-          ],
-        ),
+      body: _selectedIndex == 0
+          ? (_isWritingNote
+          ? NewNotePage(
+        existingTitle: _noteTitle,
+        existingContent: _noteContent,
+        onTitleChanged: (val) => _noteTitle = val,
+        onContentChanged: (val) => _noteContent = val,
       )
-          : (_selectedIndex == 0
-          ? (_isWritingNote ? const NewNotePage() : const DiaryPage())
-          : _pages[_selectedIndex]),
+          : DiaryPage(onNoteTap: _editExistingNote))
+          : _pages[_selectedIndex],
       bottomNavigationBar: SizedBox(
         height: barHeight,
         child: BottomNavigationBar(
@@ -269,10 +326,8 @@ class _HomePageState extends State<HomePage> {
           backgroundColor: Colors.grey[900],
           selectedItemColor: Colors.white,
           unselectedItemColor: Colors.white70,
-          currentIndex: _selectedIndex == -1 ? 0 : _selectedIndex,
+          currentIndex: _selectedIndex,
           onTap: _onItemTapped,
-          selectedFontSize: 14,
-          unselectedFontSize: 14,
           showSelectedLabels: false,
           showUnselectedLabels: false,
           items: [
@@ -296,8 +351,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  BottomNavigationBarItem _buildNavItem(
-      String label, String iconPath, int index) {
+  BottomNavigationBarItem _buildNavItem(String label, String iconPath, int index) {
     final bool isSelected = _selectedIndex == index;
     final double scale = isSelected ? 1.2 : 1.0;
 
@@ -305,9 +359,8 @@ class _HomePageState extends State<HomePage> {
       icon: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 1.0, end: scale),
         duration: const Duration(milliseconds: 200),
-        builder: (context, value, child) {
-          return Transform.scale(scale: value, child: child);
-        },
+        builder: (context, value, child) =>
+            Transform.scale(scale: value, child: child),
         child: ImageIcon(
           AssetImage(iconPath),
           size: 24,

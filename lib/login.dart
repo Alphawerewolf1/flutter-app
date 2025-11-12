@@ -27,7 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (input.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter both email/username and password")),
+        const SnackBar(
+            content: Text("Please enter both email/username and password")),
       );
       return;
     }
@@ -35,44 +36,61 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => isLoading = true);
 
     try {
-      String? emailToUse;
-
-      // 🔍 Step 1: Detect if input is an email
+      String emailToUse = input;
       final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-      if (emailRegex.hasMatch(input)) {
-        emailToUse = input.toLowerCase();
-      } else {
-        // 🔍 Step 2: Find user by username in Firestore
-        final query = await _firestore
-            .collection('users')
-            .where('username', isEqualTo: input)
-            .limit(1)
-            .get();
 
-        if (query.docs.isEmpty) {
-          throw FirebaseAuthException(
-            code: 'user-not-found',
-            message: 'No account found with this username',
-          );
+      // 🔍 If input is NOT an email, try login first assuming username
+      if (!emailRegex.hasMatch(input)) {
+        try {
+          // Try to sign in directly assuming the username was an email (may fail)
+          await _auth.signInWithEmailAndPassword(
+              email: input, password: password);
+        } on FirebaseAuthException {
+          // We'll handle proper username lookup after authentication check below
         }
-
-        emailToUse = (query.docs.first['email'] as String).toLowerCase();
       }
 
-      // 🔐 Step 3: Sign in using Firebase Auth
-      await _auth.signInWithEmailAndPassword(
-        email: emailToUse,
-        password: password,
-      );
+      // 🔐 Step 1: Try email-based sign-in
+      UserCredential? credential;
+      try {
+        credential = await _auth.signInWithEmailAndPassword(
+          email: emailToUse,
+          password: password,
+        );
+      } on FirebaseAuthException catch (e) {
+        // If email sign-in fails and it's not an email input, fallback to username lookup
+        if (!emailRegex.hasMatch(input)) {
+          // 🔎 Attempt username → email lookup AFTER sign-in check
+          final usernameSnapshot = await _firestore
+              .collection('users')
+              .where('username', isEqualTo: input)
+              .limit(1)
+              .get();
 
-      // ✅ Step 4: Verify Firestore user record exists
-      final userDoc = await _firestore
-          .collection('users')
-          .where('email', isEqualTo: emailToUse)
-          .limit(1)
-          .get();
+          if (usernameSnapshot.docs.isEmpty) {
+            throw FirebaseAuthException(
+              code: 'user-not-found',
+              message: 'No account found with this username',
+            );
+          }
 
-      if (userDoc.docs.isEmpty) {
+          final foundEmail = usernameSnapshot.docs.first['email'];
+          credential = await _auth.signInWithEmailAndPassword(
+            email: foundEmail,
+            password: password,
+          );
+        } else {
+          rethrow;
+        }
+      }
+
+      final user = credential?.user;
+      if (user == null) throw Exception(
+          "Authentication failed — no user found.");
+
+      // ✅ Step 2: Now authenticated, we can safely check Firestore
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("User record missing in database")),
         );
@@ -81,7 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // ✅ Step 5: Navigate to HomePage
+      // ✅ Step 3: Navigate to HomePage
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomePage()),
@@ -101,25 +120,30 @@ class _LoginScreenState extends State<LoginScreen> {
         default:
           message = "Login failed. ${e.message}";
       }
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)));
     } catch (e) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Login error: ${e.toString()}")));
+          .showSnackBar(
+          SnackBar(content: Text("Login error: ${e.toString()}")));
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final size = MediaQuery
+        .of(context)
+        .size;
     final screenWidth = size.width;
     final screenHeight = size.height;
 
     final bool isDesktop = screenWidth >= 900;
     final bool isTablet = screenWidth >= 600 && screenWidth < 900;
 
-    double imageWidth = screenWidth * (isDesktop ? 0.22 : isTablet ? 0.28 : 0.36);
+    double imageWidth = screenWidth *
+        (isDesktop ? 0.22 : isTablet ? 0.28 : 0.36);
     if (imageWidth > 220) imageWidth = 220;
     if (imageWidth < 90) imageWidth = 90;
     final double imageHeight = imageWidth * 0.9;
@@ -129,11 +153,25 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Stack(
           children: [
+            // 🔹 BACKGROUND IMAGE FIRST → stays behind everything
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                  child: Image.asset(
+                    'assets/images/vr.png',
+                    width: imageWidth * 1.3,
+                    height: imageHeight * 1.3,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            // 🔹 MAIN FOREGROUND CONTENT
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 30),
               child: Center(
                 child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const BouncingScrollPhysics(),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -229,15 +267,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           onPressed: isLoading ? null : loginUser,
                           child: isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const CircularProgressIndicator(
+                              color: Colors.white)
                               : const Text(
-                                  'Log In',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                            'Log In',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                       SizedBox(height: screenHeight * 0.04),
@@ -258,7 +297,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const SignUpScreen(),
+                                      builder: (
+                                          context) => const SignUpScreen(),
                                     ),
                                   );
                                 },
@@ -278,18 +318,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(height: screenHeight * 0.1),
                     ],
                   ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: IgnorePointer(
-                child: Image.asset(
-                  'assets/images/vr.png',
-                  width: imageWidth,
-                  height: imageHeight,
-                  fit: BoxFit.contain,
                 ),
               ),
             ),

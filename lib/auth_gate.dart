@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:quinez/auth_service.dart';
 import 'package:quinez/home_page.dart';
-import 'package:quinez/login.dart';
+import 'package:quinez/main.dart'; // Import for WelcomeScreen
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -21,11 +21,11 @@ class AuthGate extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
-          // User logged in → go to home/dashboard
+          // User logged in → go to home
           return const HomePage();
         } else {
-          // No user → go to login screen
-          return const LoginScreen();
+          // No user logged in → go to welcome screen (not login)
+          return const WelcomeScreen();
         }
       },
     );

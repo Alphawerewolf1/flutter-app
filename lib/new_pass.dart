@@ -1,79 +1,86 @@
 import 'package:flutter/material.dart';
-import 'package:quinez/main.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:quinez/login.dart';
 
 class NewPass extends StatefulWidget {
-  const NewPass({super.key});
+  final String email;
+  const NewPass({super.key, required this.email});
 
   @override
   State<NewPass> createState() => _NewPassState();
 }
 
 class _NewPassState extends State<NewPass> {
-  final _newPassController = TextEditingController();
-  final _confirmPassController = TextEditingController();
-
-  final _confirmPassFocusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Listen to "Enter" or "done" on the confirm password field
-    _confirmPassFocusNode.addListener(() {
-      if (!_confirmPassFocusNode.hasFocus) {
-        // Focus lost, we can also do validation here if wanted
-      }
-    });
-  }
+  final TextEditingController _newPassController = TextEditingController();
+  final TextEditingController _confirmPassController = TextEditingController();
+  bool _loading = false;
 
   @override
   void dispose() {
     _newPassController.dispose();
     _confirmPassController.dispose();
-    _confirmPassFocusNode.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _updatePassword() async {
     final newPass = _newPassController.text.trim();
     final confirmPass = _confirmPassController.text.trim();
 
     if (newPass.isEmpty || confirmPass.isEmpty) {
-      _showErrorDialog('Please fill in both password fields.');
+      _showDialog('Please fill in both fields.');
       return;
     }
-
     if (newPass != confirmPass) {
-      _showErrorDialog('Passwords do not match.');
+      _showDialog('Passwords do not match.');
       return;
     }
 
-    // Show a success SnackBar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Password has been successfully changed!'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    setState(() => _loading = true);
 
-    // Navigate after a short delay to allow the SnackBar to be seen
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const NoteCastApp()),
+    try {
+      final auth = FirebaseAuth.instance;
+      final user = auth.currentUser;
+
+      if (user == null) {
+        _showDialog('You must open this screen via the reset email link.');
+        return;
+      }
+
+      await user.updatePassword(newPass);
+      await user.reload();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password updated successfully! Please log in again.'),
+          backgroundColor: Colors.green,
+        ),
       );
-    });
+
+      await auth.signOut();
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+      );
+    } on FirebaseAuthException catch (e) {
+      _showDialog(e.message ?? 'Failed to update password.');
+    } catch (e) {
+      _showDialog('Error: $e');
+    } finally {
+      setState(() => _loading = false);
+    }
   }
 
-  void _showErrorDialog(String message) {
+  void _showDialog(String msg) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
+      builder: (_) => AlertDialog(
+        title: const Text('Notice'),
+        content: Text(msg),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () => Navigator.pop(context),
             child: const Text('OK'),
           ),
         ],
@@ -105,78 +112,65 @@ class _NewPassState extends State<NewPass> {
                   ),
                 ),
                 const SizedBox(height: 40),
-
-                const Text(
-                  'New Password:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
+                const Text('New Password:',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _newPassController,
                   obscureText: true,
-                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  onSubmitted: (_) {
-                    // Move focus to confirm password field when Enter pressed
-                    FocusScope.of(context).requestFocus(_confirmPassFocusNode);
-                  },
                 ),
                 const SizedBox(height: 20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      'Confirm Password:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    SizedBox(height: 30),
-                  ],
-                ),
+                const Text('Confirm Password:',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black)),
+                const SizedBox(height: 8),
                 TextField(
                   controller: _confirmPassController,
                   obscureText: true,
-                  focusNode: _confirmPassFocusNode,
-                  textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
                       borderSide: BorderSide.none,
                     ),
                   ),
-                  onSubmitted: (_) {
-                    // When Enter/done pressed on confirm password, submit form
-                    _submit();
-                  },
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: _loading ? null : _updatePassword,
+                    child: _loading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                      'Update Password',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-
           Positioned(
             bottom: screenHeight * 0.01,
             right: screenWidth * 0.01,
