@@ -2,7 +2,7 @@
     package="com.example.quinez">
 
     <application
-        android:label="quinez"
+        android:label="NoteCast"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

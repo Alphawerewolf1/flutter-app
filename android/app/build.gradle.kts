@@ -8,7 +8,15 @@ plugins {
 android {
     namespace = "com.example.quinez"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
+
+    defaultConfig {
+        applicationId = "com.example.quinez"
+        minSdk = 23
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -16,15 +24,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-
-    defaultConfig {
-        applicationId = "com.example.quinez"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        jvmTarget = "11"
     }
 
     buildTypes {
@@ -39,14 +39,11 @@ flutter {
 }
 
 dependencies {
-    // ✅ Firebase BoM (keeps all Firebase SDK versions aligned)
-    implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
+    // ✅ Use the Firebase BOM to keep versions aligned
+    implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
 
-    // ✅ Add the Firebase SDKs you use
+    // ✅ Individual Firebase SDKs
     implementation("com.google.firebase:firebase-analytics-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
 }
-
-apply plugin: 'com.google.gms.google-services'
-

@@ -1,32 +1,23 @@
 plugins {
-    // Make sure to include your Android and Kotlin plugins here if needed, e.g.:
-    // id("com.android.application") version "8.5.2" apply false
-    // id("org.jetbrains.kotlin.android") version "1.9.23" apply false
-
-    // ✅ Google Services plugin for Firebase
-    id("com.google.gms.google-services") version "4.4.3" apply false
-}
-
-buildscript {
-    dependencies {
-        classpath 'com.google.gms:google-services:4.4.2' // latest version
-    }
+    id("com.android.application") apply false
+    id("com.google.gms.google-services") apply false
 }
 
 allprojects {
     repositories {
-        google()
-        mavenCentral()
+        google()       // ✅ Required for Firebase artifacts
+        mavenCentral() // ✅ Backup repository
     }
 }
 
-val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
-rootProject.layout.buildDirectory.value(newBuildDir)
+// ✅ Move build output to another drive (e.g. D:\FlutterBuilds)
+val customBuildDir = File("D:/FlutterBuilds/${rootProject.name}").absoluteFile
+
+rootProject.layout.buildDirectory.set(customBuildDir)
 
 subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
-    project.evaluationDependsOn(":app")
+    layout.buildDirectory.set(customBuildDir.resolve(name))
+    evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {

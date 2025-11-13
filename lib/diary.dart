@@ -100,6 +100,48 @@ class _DiaryPageState extends State<DiaryPage> {
                             );
                           }
                         },
+                        // 🔹 Long press to delete
+                        onLongPress: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: const Text('Delete Note'),
+                                content: Text(
+                                    'Are you sure you want to delete "${note['title']}"?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                    },
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      await notesRef
+                                          .child(note['id']!)
+                                          .remove();
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              'Note "${note['title']}" deleted'),
+                                          duration:
+                                          const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      'Delete',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(16),

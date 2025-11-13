@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ForgotPass extends StatefulWidget {
   const ForgotPass({super.key});
@@ -20,8 +19,7 @@ class _ForgotPassState extends State<ForgotPass> {
   }
 
   Future<void> _sendResetEmail() async {
-    final rawEmail = _emailController.text.trim();
-    final email = rawEmail.toLowerCase();
+    final email = _emailController.text.trim().toLowerCase();
 
     if (email.isEmpty) {
       _showSnack('Please enter your email.', Colors.red);
@@ -31,30 +29,11 @@ class _ForgotPassState extends State<ForgotPass> {
     setState(() => _loading = true);
 
     try {
-      final auth = FirebaseAuth.instance;
-      final firestore = FirebaseFirestore.instance;
-
-      // Check if email exists in Firebase Auth
-      final methods = await auth.fetchSignInMethodsForEmail(email);
-      if (methods.isEmpty || !methods.contains('password')) {
-        // Check Firestore as fallback
-        final userQuery = await firestore
-            .collection('users')
-            .where('email', isEqualTo: email)
-            .limit(1)
-            .get();
-
-        if (userQuery.docs.isEmpty) {
-          _showSnack('No account found for this email.', Colors.red);
-          return;
-        }
-      }
-
-      // Send password reset email
-      await auth.sendPasswordResetEmail(email: email);
+      // ✅ Only use Firebase Auth to send reset email
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
 
       _showSnack(
-        'Password reset email sent! Check your inbox and click the link to reset your password.',
+        'Password reset email sent! Check your inbox.',
         Colors.green,
       );
     } on FirebaseAuthException catch (e) {
